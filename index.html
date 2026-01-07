@@ -45,7 +45,6 @@
             overflow: hidden;
         }
 
-        /* Version Label */
         .ver-info {
             position: absolute;
             top: 10px; right: 20px;
@@ -117,7 +116,6 @@
 
         input:focus { border-color: var(--neon-purple); background: rgba(0, 0, 0, 0.6); outline: none; box-shadow: 0 0 15px rgba(157, 0, 255, 0.3); }
 
-        /* BÀN PHÍM NHANH */
         .quick-keys {
             display: grid;
             grid-template-columns: 2fr 1fr 2fr;
@@ -196,13 +194,13 @@
         .f-btn { flex: 1; padding: 16px; border: none; border-radius: 12px; font-family: 'Orbitron'; font-weight: 900; cursor: pointer; transition: 0.2s; }
         .f-btn:active { transform: scale(0.95); }
 
-        /* STATUS POPUP */
         #statusPop {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(0, 242, 255, 0.15); backdrop-filter: blur(10px);
             border: 1px solid var(--neon-blue); padding: 8px 20px; border-radius: 50px;
             font-family: 'Orbitron'; font-size: 11px; color: #fff; z-index: 999;
             display: flex; align-items: center; gap: 8px; opacity: 0; transition: 0.5s;
+            pointer-events: none;
         }
         .pulse-dot { width: 6px; height: 6px; background: var(--neon-green); border-radius: 50%; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
@@ -226,8 +224,8 @@
     </div>
 
     <div class="input-group">
-        <label class="label-small">📊 Lịch Sử Phiên (T/X)</label>
-        <input type="text" id="histInput" placeholder="..." readonly autocomplete="off">
+        <label class="label-small">📊 Lịch Sử Phiên (Dán Ctrl+V hoặc bấm nút)</label>
+        <input type="text" id="histInput" placeholder="VÍ DỤ: TXT..." autocomplete="off" oninput="validateInput(this)">
         
         <div class="quick-keys">
             <button class="key key-t" onclick="quickType('T')">TÀI</button>
@@ -275,8 +273,7 @@
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwn_BKcRu3Nr2E3xsgEqTr2jCGi-7QKULB17T_wIfXj8hL7D6wmVHqtVG_6s7FNmIgihA/exec";
     let wins = 0, losses = 0, lastPrediction = "", currentBet = 0;
 
-    // Khởi tạo popup
-    window.onload = () => { triggerPopup("TOOL LC79 V2.0 READY"); };
+    window.onload = () => { triggerPopup("TOOL LC79 READY (PASTE SUPPORTED)"); };
 
     function triggerPopup(msg) {
         const p = document.getElementById('statusPop');
@@ -285,11 +282,17 @@
         setTimeout(() => { p.style.opacity = "0"; }, 3000);
     }
 
-    // Xử lý bàn phím nhanh
+    // Tự động lọc khi dán (Ctrl+V) hoặc gõ
+    function validateInput(el) {
+        // Chuyển hoa, lọc bỏ mọi ký tự không phải T hoặc X
+        el.value = el.value.toUpperCase().replace(/[^TX]/g, '');
+    }
+
     function quickType(v) {
         let h = document.getElementById('histInput');
         if(v === 'DEL') h.value = h.value.slice(0, -1);
         else h.value += v;
+        validateInput(h);
     }
 
     async function startLoading() {
