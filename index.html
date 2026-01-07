@@ -32,7 +32,6 @@
             padding: 15px;
         }
 
-        /* Container hiện đại hơn */
         .container {
             background: var(--panel);
             padding: 25px;
@@ -44,6 +43,17 @@
             backdrop-filter: blur(20px);
             position: relative;
             overflow: hidden;
+        }
+
+        /* Version Label */
+        .ver-info {
+            position: absolute;
+            top: 10px; right: 20px;
+            font-family: 'Orbitron';
+            font-size: 8px;
+            color: var(--neon-green);
+            letter-spacing: 1px;
+            opacity: 0.8;
         }
 
         .container::before {
@@ -70,7 +80,6 @@
             margin-bottom: 25px;
         }
 
-        /* Thống kê dạng Card */
         .stats-summary {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -108,7 +117,27 @@
 
         input:focus { border-color: var(--neon-purple); background: rgba(0, 0, 0, 0.6); outline: none; box-shadow: 0 0 15px rgba(157, 0, 255, 0.3); }
 
-        /* Nút bấm hiệu ứng Glow */
+        /* BÀN PHÍM NHANH */
+        .quick-keys {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .key {
+            padding: 12px 0;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .key-t { background: var(--neon-pink); color: #fff; }
+        .key-x { background: var(--neon-blue); color: #000; }
+        .key-del { background: #333; color: #fff; font-size: 10px; }
+        .key:active { transform: scale(0.9); opacity: 0.8; }
+
         .btn-main {
             width: 100%;
             padding: 18px;
@@ -122,6 +151,7 @@
             text-transform: uppercase;
             transition: 0.3s;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            margin-top: 15px;
             margin-bottom: 15px;
         }
 
@@ -144,7 +174,6 @@
         .tai-text { color: var(--neon-pink); filter: drop-shadow(0 0 15px var(--neon-pink)); }
         .xiu-text { color: var(--neon-blue); filter: drop-shadow(0 0 15px var(--neon-blue)); }
 
-        /* Thanh % chuyên nghiệp */
         .bar-wrap {
             height: 30px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; overflow: hidden; display: flex; margin: 15px 0; border: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -166,11 +195,23 @@
 
         .f-btn { flex: 1; padding: 16px; border: none; border-radius: 12px; font-family: 'Orbitron'; font-weight: 900; cursor: pointer; transition: 0.2s; }
         .f-btn:active { transform: scale(0.95); }
+
+        /* STATUS POPUP */
+        #statusPop {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 242, 255, 0.15); backdrop-filter: blur(10px);
+            border: 1px solid var(--neon-blue); padding: 8px 20px; border-radius: 50px;
+            font-family: 'Orbitron'; font-size: 11px; color: #fff; z-index: 999;
+            display: flex; align-items: center; gap: 8px; opacity: 0; transition: 0.5s;
+        }
+        .pulse-dot { width: 6px; height: 6px; background: var(--neon-green); border-radius: 50%; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="ver-info">VER 2.0.26 PRE</div>
     <div class="header"><h2>CYBER LC79</h2></div>
     
     <div class="stats-summary">
@@ -186,7 +227,13 @@
 
     <div class="input-group">
         <label class="label-small">📊 Lịch Sử Phiên (T/X)</label>
-        <input type="text" id="histInput" placeholder="VD: TTXX..." autocomplete="off" oninput="this.value = this.value.toUpperCase()">
+        <input type="text" id="histInput" placeholder="..." readonly autocomplete="off">
+        
+        <div class="quick-keys">
+            <button class="key key-t" onclick="quickType('T')">TÀI</button>
+            <button class="key key-del" onclick="quickType('DEL')">XÓA</button>
+            <button class="key key-x" onclick="quickType('X')">XỈU</button>
+        </div>
     </div>
 
     <button class="btn-main" id="btnMain" onclick="startLoading()">PHÂN TÍCH HỆ THỐNG</button>
@@ -219,27 +266,47 @@
     </div>
 </div>
 
+<div id="statusPop">
+    <div class="pulse-dot"></div>
+    <span id="statusTxt">HỆ THỐNG HOẠT ĐỘNG</span>
+</div>
+
 <script>
-    // URL Web App của bạn
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwn_BKcRu3Nr2E3xsgEqTr2jCGi-7QKULB17T_wIfXj8hL7D6wmVHqtVG_6s7FNmIgihA/exec";
-    
     let wins = 0, losses = 0, lastPrediction = "", currentBet = 0;
+
+    // Khởi tạo popup
+    window.onload = () => { triggerPopup("TOOL LC79 V2.0 READY"); };
+
+    function triggerPopup(msg) {
+        const p = document.getElementById('statusPop');
+        document.getElementById('statusTxt').innerText = msg;
+        p.style.opacity = "1";
+        setTimeout(() => { p.style.opacity = "0"; }, 3000);
+    }
+
+    // Xử lý bàn phím nhanh
+    function quickType(v) {
+        let h = document.getElementById('histInput');
+        if(v === 'DEL') h.value = h.value.slice(0, -1);
+        else h.value += v;
+    }
 
     async function startLoading() {
         const btn = document.getElementById('btnMain');
         const hist = document.getElementById('histInput').value.trim();
-        if (hist.length < 3) { alert("Vui lòng nhập tối thiểu 3 tay gần nhất!"); return; }
+        if (hist.length < 3) { alert("Nhập tối thiểu 3 tay!"); return; }
 
         btn.innerText = "SCANNING BIG DATA...";
         btn.disabled = true;
+        triggerPopup("ĐANG TRUY XUẤT DỮ LIỆU...");
 
         try {
             const response = await fetch(GOOGLE_SHEET_URL);
             const sheetData = await response.json();
             runAnalysis(sheetData);
         } catch (error) {
-            console.error("Lỗi fetch:", error);
-            runAnalysis([]); // Chạy offline nếu lỗi server
+            runAnalysis([]); 
         } finally {
             btn.innerText = "PHÂN TÍCH HỆ THỐNG";
             btn.disabled = false;
@@ -248,15 +315,13 @@
 
     function runAnalysis(sheetData) {
         let cap = parseInt(document.getElementById('capInput').value) || 0;
-        let raw = document.getElementById('histInput').value.toUpperCase().replace(/[^TX]/g, '');
+        let raw = document.getElementById('histInput').value.toUpperCase();
         
-        // Dữ liệu mẫu kết hợp từ Sheet và dữ liệu người dùng nhập
         let oldHistory = sheetData.map(row => row[1]).join('');
         let fullData = (oldHistory + raw).split('');
         
         let pT = 50, matchCount = 0, usedPattern = "";
 
-        // 1. Logic Deep Scan (Soi mẫu quá khứ)
         for (let len = 4; len >= 2; len--) {
             let pattern = raw.slice(-len);
             let cT = 0, cX = 0;
@@ -273,13 +338,11 @@
             }
         }
 
-        // 2. Logic Soi Cầu Nghiêng (Tính tỉ lệ T/X trong 10 tay gần nhất)
         let last10 = raw.slice(-10);
         let countT = (last10.match(/T/g) || []).length;
-        let skewT = (countT / last10.length) * 100;
-        pT = (pT * 0.7) + (skewT * 0.3); // Kết hợp 2 thuật toán
+        let skewT = (countT / (last10.length || 1)) * 100;
+        pT = (pT * 0.7) + (skewT * 0.3);
 
-        // 3. Logic Bệt (Streak)
         let lastChar = raw[raw.length-1];
         let streak = 0;
         for (let i = raw.length-1; i >= 0; i--) {
@@ -289,13 +352,11 @@
             if (lastChar === 'T') pT += 10; else pT -= 10;
         }
 
-        // Chuẩn hóa %
         pT = Math.min(96, Math.max(4, Math.round(pT)));
         let pX = 100 - pT;
         lastPrediction = pT >= pX ? 'T' : 'X';
         let conf = Math.max(pT, pX);
 
-        // Hiển thị
         document.getElementById('resArea').style.display = 'block';
         let pDiv = document.getElementById('finalPred');
         pDiv.innerText = lastPrediction === 'T' ? "TÀI" : "XỈU";
@@ -306,26 +367,22 @@
         document.getElementById('barT').innerText = pT > 20 ? pT + "%" : "";
         document.getElementById('barX').style.width = pX + "%";
         document.getElementById('barX').innerText = pX > 20 ? pX + "%" : "";
-        
-        document.getElementById('historyMsg').innerText = `MẪU [${usedPattern}] - TÌM THẤY ${matchCount} DỮ LIỆU`;
+        document.getElementById('historyMsg').innerText = `MẪU [${usedPattern}] - ${matchCount} DATA`;
 
-        // Quản lý vốn Smart (Gợi ý cược)
-        let rate = 0.02; // Mặc định 2%
-        if (conf >= 90) rate = 0.15; // Rất tự tin: 15%
-        else if (conf >= 80) rate = 0.08; // Khá tự tin: 8%
-        else if (conf >= 70) rate = 0.04; // Bình thường: 4%
+        let rate = 0.02; 
+        if (conf >= 90) rate = 0.15;
+        else if (conf >= 80) rate = 0.08;
+        else if (conf >= 70) rate = 0.04;
 
         currentBet = Math.floor(cap * rate);
         document.getElementById('moneyVal').innerText = currentBet.toLocaleString('vi-VN') + " VNĐ";
-        
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        triggerPopup("PHÂN TÍCH XONG!");
     }
 
     function recordFeedback(isWin) {
         let h = document.getElementById('histInput');
         let res = isWin ? lastPrediction : (lastPrediction === "T" ? "X" : "T");
         
-        // Gửi ngầm về Google Sheet
         fetch(GOOGLE_SHEET_URL, {
             method: 'POST', 
             mode: 'no-cors', 
@@ -338,12 +395,11 @@
             })
         });
 
-        if (isWin) wins++; else losses++;
+        if (isWin) { wins++; triggerPopup("WIN CHIẾN THẮNG!"); } 
+        else { losses++; triggerPopup("LOSS - CẨN THẬN!"); }
         
-        // Thêm kết quả vào ô nhập liệu để soi tay sau luôn
         h.value += res;
         
-        // Cập nhật UI
         document.getElementById('winCount').innerText = wins;
         document.getElementById('lossCount').innerText = losses;
         document.getElementById('winRate').innerText = Math.round((wins / (wins + losses)) * 100) + "%";
