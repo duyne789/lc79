@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tool LC79 - Ultimate MD5 AI Neural v4</title>
+    <title>Tool LC79 - Ultimate MD5 AI Neural v4.2</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
@@ -27,6 +27,8 @@
         .key-t { background: var(--neon-pink); color: #fff; }
         .key-x { background: var(--neon-blue); color: #000; }
         .key-del { background: #333; color: #fff; font-size: 10px; }
+        .btn-reset { width: 100%; margin-top: 8px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #888; font-family: 'Orbitron'; font-size: 10px; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px; }
+        .btn-reset:hover { background: rgba(255, 0, 85, 0.1); color: var(--neon-pink); border-color: var(--neon-pink); }
         .btn-main { width: 100%; padding: 18px; background: linear-gradient(90deg, #9d00ff, #00f2ff); color: white; font-family: 'Orbitron'; font-weight: 900; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; transition: 0.3s; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); margin-top: 15px; margin-bottom: 15px; }
         .result-area { margin-top: 20px; padding: 20px; background: rgba(0, 0, 0, 0.5); border-radius: 18px; border: 1px solid var(--neon-purple); display: none; animation: slideUp 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -49,7 +51,7 @@
 <body>
 
 <div class="container">
-    <div class="ver-info">VER 4.1.0 NEURAL-MINBET</div>
+    <div class="ver-info">VER 4.2.5 NEURAL-RESET</div>
     <div class="header"><h2>TOOL LC79 MD5</h2></div>
     
     <div class="stats-summary">
@@ -71,6 +73,7 @@
             <button class="key key-del" onclick="quickType('DEL')">XÓA</button>
             <button class="key key-x" onclick="quickType('X')">XỈU</button>
         </div>
+        <button class="btn-reset" onclick="resetAI()">♻️ Reset AI Memory & History</button>
     </div>
 
     <button class="btn-main" id="btnMain" onclick="startLoading()">Phân Tích Kết Quả</button>
@@ -115,13 +118,28 @@
     let wins = 0, losses = 0, lastPrediction = "", currentBet = 0;
     let aiMemory = []; 
 
-    window.onload = () => { triggerPopup("AI Min-Bet Ready"); };
+    window.onload = () => { triggerPopup("AI Neural Pro Ready"); };
 
     function triggerPopup(msg) {
         const p = document.getElementById('statusPop');
         document.getElementById('statusTxt').innerText = msg;
         p.style.opacity = "1";
         setTimeout(() => { p.style.opacity = "0"; }, 3000);
+    }
+
+    // --- HÀM RESET AI MỚI ---
+    function resetAI() {
+        if(confirm("Bạn muốn làm mới AI và lịch sử để bắt đầu phiên mới?")) {
+            aiMemory = [];
+            wins = 0;
+            losses = 0;
+            document.getElementById('histInput').value = "";
+            document.getElementById('winCount').innerText = "0";
+            document.getElementById('lossCount').innerText = "0";
+            document.getElementById('winRate').innerText = "0%";
+            document.getElementById('resArea').style.display = 'none';
+            triggerPopup("Hệ thống đã Reset!");
+        }
     }
 
     function validateInput(el) {
@@ -157,18 +175,16 @@
 
     function runAIAnalysis(sheetData) {
         let cap = parseInt(document.getElementById('capInput').value) || 0;
-        let raw = document.getElementById('histInput').value.toUpperCase();
+        let raw = document.getElementById('histInput').value.toUpperCase().replace(/[^TX]/g, '');
         
-        let last5 = raw.slice(-5);
-        let isBeting = last5 === "TTTTT" || last5 === "XXXXX";
         let oldHistory = sheetData.map(row => row[1]).join('');
         let fullData = (oldHistory + raw).split('');
         
         let scoreT = 0, scoreX = 0;
         let matchCount = 0, usedPattern = "";
 
-        // Layer 1: Deep Scan 35
-        let scanLimit = Math.min(raw.length, 35);
+        // 1. Phân tích mẫu sâu
+        let scanLimit = Math.min(raw.length, 25);
         for (let len = scanLimit; len >= 2; len--) {
             let pattern = raw.slice(-len);
             let cT = 0, cX = 0;
@@ -179,43 +195,37 @@
             }
             if ((cT + cX) > 0) {
                 matchCount = cT + cX;
-                scoreT += (cT / matchCount) * 40;
-                scoreX += (cX / matchCount) * 40;
+                scoreT = (cT / matchCount) * 70;
+                scoreX = (cX / matchCount) * 70;
                 usedPattern = pattern;
                 break;
             }
         }
 
-        // Layer 2: Short-term Trend
-        let last10 = raw.slice(-10);
-        let countT = (last10.match(/T/g) || []).length;
-        scoreT += (countT / (last10.length || 1)) * 30;
-        scoreX += (1 - (countT / (last10.length || 1))) * 30;
+        // 2. Logic Trend Ngắn
+        let last5 = raw.slice(-5);
+        let countT5 = (last5.match(/T/g) || []).length;
+        scoreT += (countT5 / 5) * 30;
+        scoreX += (1 - (countT5 / 5)) * 30;
 
-        // Layer 3: AI Learning (Anti-Drift)
-        let winRateSession = aiMemory.filter(x => x === 'WIN').length / (aiMemory.length || 1);
-        if(aiMemory.length >= 3 && winRateSession < 0.4) {
-            document.getElementById('aiStatusLabel').innerText = "AI: DETECT REVERSE TREND (SỬA LỖI)";
+        // 3. Logic CHỐNG ĐẢO CẦU (Anti-Loss)
+        let recentLosses = aiMemory.slice(-3).filter(x => x === 'LOSS').length;
+        let basePred = scoreT >= scoreX ? 'T' : 'X';
+        
+        if (recentLosses >= 2) {
+            lastPrediction = (basePred === 'T') ? 'X' : 'T';
+            document.getElementById('aiStatusLabel').innerText = "AI: ĐANG ĐẢO CẦU (FIX)";
             document.getElementById('aiStatusLabel').style.color = "var(--neon-pink)";
-            scoreT += 15; scoreX += 15; // Phân bổ trung lập để chờ cầu đảo
         } else {
-            document.getElementById('aiStatusLabel').innerText = "AI: STABLE FLOW (ỔN ĐỊNH)";
+            lastPrediction = basePred;
+            document.getElementById('aiStatusLabel').innerText = "AI: XU HƯỚNG CHUẨN";
             document.getElementById('aiStatusLabel').style.color = "var(--neon-green)";
-            scoreT += 15; scoreX += 15;
-        }
-
-        if(isBeting) {
-            if(last5[0] === 'T') scoreT += 20; else scoreX += 20;
         }
 
         let finalPT = Math.round((scoreT / (scoreT + scoreX)) * 100);
-        finalPT = Math.min(98, Math.max(2, finalPT));
         let finalPX = 100 - finalPT;
-
-        lastPrediction = finalPT >= finalPX ? 'T' : 'X';
         let conf = Math.max(finalPT, finalPX);
 
-        // UI DISPLAY
         document.getElementById('resArea').style.display = 'block';
         let pDiv = document.getElementById('finalPred');
         pDiv.innerText = lastPrediction === 'T' ? "TÀI" : "XỈU";
@@ -225,28 +235,24 @@
         document.getElementById('barT').innerText = finalPT > 20 ? finalPT + "%" : "";
         document.getElementById('barX').style.width = finalPX + "%";
         document.getElementById('barX').innerText = finalPX > 20 ? finalPX + "%" : "";
-        document.getElementById('historyMsg').innerText = `PATTERN: [${usedPattern}] (${matchCount})`;
+        document.getElementById('historyMsg').innerText = `MẪU: [${usedPattern}] (${matchCount})`;
 
-        // --- CẬP NHẬT QUẢN LÝ VỐN MIN 1,000 ---
         const MIN_BET = 1000;
         let rate = 0.02; 
-        if (conf >= 90) rate = 0.15;
-        else if (conf >= 82) rate = 0.08;
-        else if (conf >= 75) rate = 0.04;
+        if (conf >= 90) rate = 0.12;
+        else if (conf >= 80) rate = 0.06;
 
         let calculated = Math.floor(cap * rate);
+        currentBet = (cap < MIN_BET) ? 0 : Math.max(MIN_BET, calculated);
         
-        if (cap < MIN_BET) {
-            currentBet = 0;
+        if (currentBet === 0) {
             document.getElementById('moneyVal').innerText = "VỐN THẤP";
             document.getElementById('moneyVal').style.color = "var(--neon-pink)";
-            document.getElementById('betPercent').innerText = "";
         } else {
-            currentBet = Math.max(MIN_BET, calculated);
             document.getElementById('moneyVal').innerText = currentBet.toLocaleString('vi-VN') + " VNĐ";
             document.getElementById('moneyVal').style.color = "var(--neon-green)";
             let realRate = ((currentBet / cap) * 100).toFixed(1);
-            document.getElementById('betPercent').innerText = `Vào ${realRate}% tổng vốn`;
+            document.getElementById('betPercent').innerText = `Đề xuất vào ${realRate}% vốn`;
         }
     }
 
@@ -261,15 +267,16 @@
         if(isWin) {
             capEl.value = currentCap + Math.floor(currentBet * 0.95);
             triggerPopup("THẮNG ✅");
+            wins++;
         } else {
             capEl.value = currentCap - currentBet;
             triggerPopup("THUA ❌");
+            losses++;
         }
 
         let res = isWin ? lastPrediction : (lastPrediction === "T" ? "X" : "T");
-        if (isWin) wins++; else losses++;
-        
         h.value += res;
+        
         document.getElementById('winCount').innerText = wins;
         document.getElementById('lossCount').innerText = losses;
         document.getElementById('winRate').innerText = Math.round((wins / (wins + losses)) * 100) + "%";
