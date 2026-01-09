@@ -118,7 +118,7 @@
     let wins = 0, losses = 0, lastPrediction = "", currentBet = 0;
     let aiMemory = []; 
 
-    window.onload = () => { triggerPopup("AI Neural Pro Ready"); };
+    window.onload = () => { triggerPopup("AI Neural v4.5 Ready"); };
 
     function triggerPopup(msg) {
         const p = document.getElementById('statusPop');
@@ -127,12 +127,9 @@
         setTimeout(() => { p.style.opacity = "0"; }, 3000);
     }
 
-    // --- HÀM RESET AI MỚI ---
     function resetAI() {
-        if(confirm("Bạn muốn làm mới AI và lịch sử để bắt đầu phiên mới?")) {
-            aiMemory = [];
-            wins = 0;
-            losses = 0;
+        if(confirm("Bạn muốn làm mới bộ nhớ AI và lịch sử để bắt đầu phiên mới?")) {
+            aiMemory = []; wins = 0; losses = 0;
             document.getElementById('histInput').value = "";
             document.getElementById('winCount').innerText = "0";
             document.getElementById('lossCount').innerText = "0";
@@ -158,7 +155,7 @@
         const hist = document.getElementById('histInput').value.trim();
         if (hist.length < 3) { alert("Nhập tối thiểu 3 tay để quét!"); return; }
 
-        btn.innerText = "Neural Analyzing...";
+        btn.innerText = "🧠 Neural Analyzing...";
         btn.disabled = true;
 
         try {
@@ -176,15 +173,20 @@
     function runAIAnalysis(sheetData) {
         let cap = parseInt(document.getElementById('capInput').value) || 0;
         let raw = document.getElementById('histInput').value.toUpperCase().replace(/[^TX]/g, '');
-        
         let oldHistory = sheetData.map(row => row[1]).join('');
         let fullData = (oldHistory + raw).split('');
         
         let scoreT = 0, scoreX = 0;
         let matchCount = 0, usedPattern = "";
 
-        // 1. Phân tích mẫu sâu
-        let scanLimit = Math.min(raw.length, 25);
+        // --- 1. NHẬN DIỆN BỆT (Bám Rồng 98%) ---
+        let last3 = raw.slice(-3);
+        let last4 = raw.slice(-4);
+        let isBetingT = (last4 === "TTTT" || last3 === "TTT");
+        let isBetingX = (last4 === "XXXX" || last3 === "XXX");
+
+        // --- 2. PHÂN TÍCH MẪU SÂU (Neural Matching 40%) ---
+        let scanLimit = Math.min(raw.length, 12);
         for (let len = scanLimit; len >= 2; len--) {
             let pattern = raw.slice(-len);
             let cT = 0, cX = 0;
@@ -195,65 +197,69 @@
             }
             if ((cT + cX) > 0) {
                 matchCount = cT + cX;
-                scoreT = (cT / matchCount) * 70;
-                scoreX = (cX / matchCount) * 70;
+                scoreT = (cT / matchCount) * 40;
+                scoreX = (cX / matchCount) * 40;
                 usedPattern = pattern;
                 break;
             }
         }
 
-        // 2. Logic Trend Ngắn
+        // --- 3. MOMENTUM HIỆN TẠI (Nhịp gần 60%) ---
         let last5 = raw.slice(-5);
         let countT5 = (last5.match(/T/g) || []).length;
-        scoreT += (countT5 / 5) * 30;
-        scoreX += (1 - (countT5 / 5)) * 30;
+        scoreT += (countT5 / 5) * 60;
+        scoreX += (1 - (countT5 / 5)) * 60;
 
-        // 3. Logic CHỐNG ĐẢO CẦU (Anti-Loss)
+        // --- 4. OVERRIDE TRẠNG THÁI RỒNG ---
+        if (isBetingT) { scoreT = 98; scoreX = 2; }
+        if (isBetingX) { scoreX = 98; scoreT = 2; }
+
+        // --- 5. FIX ĐẢO CẦU & UNIQUE MEMORY ---
         let recentLosses = aiMemory.slice(-3).filter(x => x === 'LOSS').length;
-        let basePred = scoreT >= scoreX ? 'T' : 'X';
+        let finalSide = scoreT >= scoreX ? 'T' : 'X';
         
-        if (recentLosses >= 2) {
-            lastPrediction = (basePred === 'T') ? 'X' : 'T';
-            document.getElementById('aiStatusLabel').innerText = "AI: ĐANG ĐẢO CẦU (FIX)";
+        if (recentLosses >= 2 && !isBetingT && !isBetingX) {
+            lastPrediction = (finalSide === 'T') ? 'X' : 'T';
+            document.getElementById('aiStatusLabel').innerText = "AI: ĐANG FIX ĐẢO CẦU";
             document.getElementById('aiStatusLabel').style.color = "var(--neon-pink)";
         } else {
-            lastPrediction = basePred;
-            document.getElementById('aiStatusLabel').innerText = "AI: XU HƯỚNG CHUẨN";
+            lastPrediction = finalSide;
+            document.getElementById('aiStatusLabel').innerText = (isBetingT || isBetingX) ? "AI: PHÁT HIỆN RỒNG 🐉" : "AI: XU HƯỚNG CHUẨN";
             document.getElementById('aiStatusLabel').style.color = "var(--neon-green)";
         }
 
-        let finalPT = Math.round((scoreT / (scoreT + scoreX)) * 100);
-        let finalPX = 100 - finalPT;
-        let conf = Math.max(finalPT, finalPX);
+        let conf = Math.round(Math.max(scoreT, scoreX));
 
+        // --- HIỂN THỊ CHUẨN ---
         document.getElementById('resArea').style.display = 'block';
         let pDiv = document.getElementById('finalPred');
         pDiv.innerText = lastPrediction === 'T' ? "TÀI" : "XỈU";
         pDiv.className = "big-pred " + (lastPrediction === 'T' ? "tai-text" : "xiu-text");
-        document.getElementById('confVal').innerText = conf + "%";
-        document.getElementById('barT').style.width = finalPT + "%";
-        document.getElementById('barT').innerText = finalPT > 20 ? finalPT + "%" : "";
-        document.getElementById('barX').style.width = finalPX + "%";
-        document.getElementById('barX').innerText = finalPX > 20 ? finalPX + "%" : "";
-        document.getElementById('historyMsg').innerText = `MẪU: [${usedPattern}] (${matchCount})`;
-
-        const MIN_BET = 1000;
-        let rate = 0.02; 
-        if (conf >= 90) rate = 0.12;
-        else if (conf >= 80) rate = 0.06;
-
-        let calculated = Math.floor(cap * rate);
-        currentBet = (cap < MIN_BET) ? 0 : Math.max(MIN_BET, calculated);
         
-        if (currentBet === 0) {
-            document.getElementById('moneyVal').innerText = "VỐN THẤP";
-            document.getElementById('moneyVal').style.color = "var(--neon-pink)";
-        } else {
-            document.getElementById('moneyVal').innerText = currentBet.toLocaleString('vi-VN') + " VNĐ";
-            document.getElementById('moneyVal').style.color = "var(--neon-green)";
-            let realRate = ((currentBet / cap) * 100).toFixed(1);
-            document.getElementById('betPercent').innerText = `Đề xuất vào ${realRate}% vốn`;
-        }
+        document.getElementById('confVal').innerText = conf + "%";
+        
+        // Tính % hiển thị cho thanh Bar
+        let totalScore = scoreT + scoreX;
+        let displayT = Math.round((scoreT / totalScore) * 100);
+        let displayX = 100 - displayT;
+        
+        document.getElementById('barT').style.width = displayT + "%";
+        document.getElementById('barT').innerText = displayT >= 20 ? "T " + displayT + "%" : "";
+        document.getElementById('barX').style.width = displayX + "%";
+        document.getElementById('barX').innerText = displayX >= 20 ? "X " + displayX + "%" : "";
+        
+        document.getElementById('historyMsg').innerText = `MẪU GẦN NHẤT: [${usedPattern}] (${matchCount})`;
+
+        // Quản lý vốn Smart-Bet
+        let rate = 0.02;
+        if (conf >= 95) rate = 0.15; 
+        else if (conf >= 85) rate = 0.08;
+        else if (conf >= 75) rate = 0.04;
+
+        currentBet = Math.floor(cap * rate);
+        if (currentBet < 1000) currentBet = 1000;
+        document.getElementById('moneyVal').innerText = currentBet.toLocaleString('vi-VN') + " VNĐ";
+        document.getElementById('betPercent').innerText = `Gợi ý vào: ${Math.round(rate*100)}% vốn`;
     }
 
     function recordFeedback(isWin) {
@@ -266,23 +272,27 @@
 
         if(isWin) {
             capEl.value = currentCap + Math.floor(currentBet * 0.95);
-            triggerPopup("THẮNG ✅");
             wins++;
+            h.value += lastPrediction; 
+            triggerPopup("LỤM LÚA! ✅");
         } else {
             capEl.value = currentCap - currentBet;
-            triggerPopup("THUA ❌");
             losses++;
+            h.value += (lastPrediction === 'T' ? 'X' : 'T');
+            triggerPopup("GÃY NHỊP! ❌");
         }
 
-        let res = isWin ? lastPrediction : (lastPrediction === "T" ? "X" : "T");
-        h.value += res;
-        
         document.getElementById('winCount').innerText = wins;
         document.getElementById('lossCount').innerText = losses;
-        document.getElementById('winRate').innerText = Math.round((wins / (wins + losses)) * 100) + "%";
+        
+        // Fix lỗi NaN%
+        let total = wins + losses;
+        document.getElementById('winRate').innerText = total > 0 ? Math.round((wins / total) * 100) + "%" : "0%";
+        
         document.getElementById('resArea').style.display = 'none';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 </script>
 </body>
 </html>
+
